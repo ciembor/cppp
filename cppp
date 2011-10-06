@@ -1,0 +1,105 @@
+#!/bin/bash
+
+########################################################################
+###   GLOBAL VARIABLES   ###############################################
+
+MAX_WIDTH=`tput cols`
+
+PERIOD=100
+SOURCE=
+TARGET=
+
+SOURCE_SIZE=''
+TARGET_SIZE=''
+
+########################################################################
+###   OPTIONS   ########################################################
+
+function print_help {
+
+cat << EOF
+usage: $0 options
+
+Syntax: cppp [OPTION]... -s SOURCE -t TARGET|DIRECTORY
+    
+This script copy SOURCE to TARGET or SOURCE to DIRECTORY
+
+OPTIONS:
+   -h      Show usage
+   -p      Refreshing period in miliseconds [1; 1000]
+   -s      Source file path
+   -t      Target file or directory path
+EOF
+
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+while getopts "hs:t:p:" OPTION
+do
+  case $OPTION in
+    h)
+      print_help
+      exit
+      ;;
+    s)
+      SOURCE=$OPTARG
+      ;;
+    t)
+      TARGET=$OPTARG
+      ;;
+    p)
+      PERIOD=$OPTARG
+      ;;
+    ?)
+      print_help
+      exit 1
+      ;;
+  esac
+done
+  
+# validation  # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+  
+if [[ -z $SOURCE  || -z $TARGET || $PERIOD -lt 100 || $PERIOD -gt 1000 ]]
+then
+  print_help
+  exit 1
+fi
+
+########################################################################
+###   FUNCTIONS   ###################################################### 
+
+# copy_file $source $target
+#
+# @param $source - source file path
+# @param $target - target file or directory path
+# @return copied file size in bytes
+
+function copy_file {
+
+  local source=$1
+  local target=$2
+  
+  echo $source
+  echo $target
+  
+#  rm -rf $target
+  cp $source $target &
+  
+  local source_size=`stat -c %s $source`
+  local target_size=`stat -c %s $target`
+  
+  while [ $target_size -lt $source_size ] ; do
+    printf %s "copying... "
+    sleep `echo $PERIOD/1000 | bc -l`
+  done
+
+  return $target_size
+
+}
+
+########################################################################
+###   MAIN   ###########################################################
+
+copy_file $SOURCE $TARGET
+
