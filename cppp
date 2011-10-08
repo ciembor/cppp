@@ -3,15 +3,14 @@
 ########################################################################
 ###   GLOBAL VARIABLES   ###############################################
 
-MAX_WIDTH=`tput cols`
-
-
 PERIOD=50
 SOURCE=
 TARGET=
 
 SOURCE_SIZE=''
 TARGET_SIZE=''
+
+SIZE_UNITS=( 'B ' 'KB' 'MB' 'GB' 'TB' 'PB' 'EB' 'ZB' 'YB' )
 
 ########################################################################
 ###   OPTIONS   ########################################################
@@ -80,40 +79,43 @@ function copy_file {
 
   local source=$1
   local target=$2
-  
-#  rm -rf $target
+
   cp $source $target &
   
   local source_size=`stat -c %s $source`
   local target_size=0
   local percent=0
   local string=''
-  local bar_width=`echo $MAX_WIDTH-7 | bc`
+  
+# CUrsor Down
+  printf '\n\n'
   
   while [ $target_size -lt $source_size ] ; do
+    
+    local max_width=`tput cols`
+#   name_width=`echo $max_width-16 | bc`
+    local percent_width=7
+    local bar_width=`echo $max_width-$percent_width | bc`
+  
     percent=`echo "($target_size*100)/$source_size" | bc -l | xargs printf '%1.0f'`
 
     string=''
-    string="Copying: ${string}${source}\n"
+#    string=${string}"Copying: `printf %.${name_width}s ${source}`\n"
     string=${string}`print_progress_bar $bar_width $percent`
-    string="${string} [`printf %3s ${percent}`%%]"
-  
-   printf "$string"
-
-#echo $bar_width
-
+    string=${string}" [`printf %3s ${percent}`%%]"
+    string=${string}`print_size_bar $source_size $target_size`'\n'
+    
+    if [ $max_width = `tput cols` ]
+    then
 # CUrsor Up
-    tput cuu 2
-
+      tput cuu 2
+      printf "$string"
+    fi
+    
     target_size=`stat -c %s $target`
     sleep `echo $PERIOD/1000 | bc -l`
     
   done
-
-# CUrsor Down
-  tput cud 2
-
-  printf '\n'
 
   return $target_size
 
@@ -121,7 +123,7 @@ function copy_file {
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# progress_bar $length $percent
+# print_progress_bar $length $percent
 #
 # @param $length - length of progress bar in number of characters
 # @param $percent - progress in percents
@@ -145,10 +147,55 @@ function print_progress_bar {
   done
   
   for i in `seq $middle $end` ; do
-    empty_space=' '$empty_space
+    empty_space=$empty_space' '
   done
 
   printf "[${progress_bar}${empty_space}]"
+  
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# print_size_bar $source_size $target_size
+#
+# @param $source_size - source size in bytes
+# @param $target_size - target size in bytes
+
+function print_size_bar {
+  
+  local source_size=$1
+  local target_size=$2
+  
+  source_size=`print_size $source_size`
+  target_size=`print_size $target_size`
+
+  printf "[${target_size}/${source_size}]"
+  
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# print_size $size
+#
+# @param size - size in bytes
+
+function print_size {
+  
+  local size=$1
+  local unit='??'
+  
+  for exponent in {1..10} ; do
+  
+    if [[ $size -lt 1024 ]] ; then
+      unit=${SIZE_UNITS[`echo "$exponent-1" | bc`]}
+      break
+    fi
+    
+    size=`echo "$size/1024" | bc`
+    
+  done
+  
+  printf "$size$unit"
   
 }
 
