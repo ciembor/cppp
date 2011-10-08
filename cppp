@@ -5,6 +5,7 @@
 
 MAX_WIDTH=`tput cols`
 
+
 PERIOD=50
 SOURCE=
 TARGET=
@@ -85,20 +86,34 @@ function copy_file {
   
   local source_size=`stat -c %s $source`
   local target_size=0
-
   local percent=0
-
-  printf "$source\n"
+  local string=''
+  local bar_width=`echo $MAX_WIDTH-7 | bc`
   
   while [ $target_size -lt $source_size ] ; do
     percent=`echo "($target_size*100)/$source_size" | bc -l | xargs printf '%1.0f'`
 
-    print_progress_bar $MAX_WIDTH $percent
+    string=''
+    string="Copying: ${string}${source}\n"
+    string=${string}`print_progress_bar $bar_width $percent`
+    string="${string} [`printf %3s ${percent}`%%]"
+  
+   printf "$string"
+
+#echo $bar_width
+
+# CUrsor Up
+    tput cuu 2
 
     target_size=`stat -c %s $target`
     sleep `echo $PERIOD/1000 | bc -l`
     
   done
+
+# CUrsor Down
+  tput cud 2
+
+  printf '\n'
 
   return $target_size
 
@@ -132,24 +147,18 @@ function print_progress_bar {
   for i in `seq $middle $end` ; do
     empty_space=' '$empty_space
   done
-  
-#   restore cursor
-  tput rc
-#   save cursor
-  tput sc
-#   delete line
-  tput il1
-  printf "[$progress_bar$empty_space]"
+
+  printf "[${progress_bar}${empty_space}]"
   
 }
 
 ########################################################################
 ###   MAIN   ###########################################################
 
-#hide cursor
+# hide cursor
 tput civis
 
 copy_file $SOURCE $TARGET
 
-#show cursor
+# show cursor
 tput cnorm
