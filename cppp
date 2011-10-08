@@ -5,7 +5,7 @@
 
 MAX_WIDTH=`tput cols`
 
-PERIOD=100
+PERIOD=50
 SOURCE=
 TARGET=
 
@@ -60,7 +60,7 @@ done
   
 # validation  # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   
-if [[ -z $SOURCE  || -z $TARGET || $PERIOD -lt 100 || $PERIOD -gt 1000 ]]
+if [[ -z $SOURCE  || -z $TARGET || $PERIOD -lt 10 || $PERIOD -gt 1000 ]]
 then
   print_help
   exit 1
@@ -80,26 +80,76 @@ function copy_file {
   local source=$1
   local target=$2
   
-  echo $source
-  echo $target
-  
 #  rm -rf $target
   cp $source $target &
   
   local source_size=`stat -c %s $source`
-  local target_size=`stat -c %s $target`
+  local target_size=0
+
+  local percent=0
+
+  printf "$source\n"
   
   while [ $target_size -lt $source_size ] ; do
-    printf %s "copying... "
+    percent=`echo "($target_size*100)/$source_size" | bc -l | xargs printf '%1.0f'`
+
+    print_progress_bar $MAX_WIDTH $percent
+
+    target_size=`stat -c %s $target`
     sleep `echo $PERIOD/1000 | bc -l`
+    
   done
 
   return $target_size
 
 }
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# progress_bar $length $percent
+#
+# @param $length - length of progress bar in number of characters
+# @param $percent - progress in percents
+
+function print_progress_bar {
+  
+  local length=$1
+  local percent=$2
+  
+  local progress_length=`echo "(($length-2)*$percent)/100" | bc -l | xargs printf '%1.0f'`
+  
+  local begin=1
+  local middle=`echo $progress_length+1 | bc`
+  local end=`echo $length-2 | bc`
+  
+  local progress_bar=''
+  local empty_space=''
+  
+  for i in `seq $begin $progress_length` ; do
+    progress_bar=$progress_bar'#'
+  done
+  
+  for i in `seq $middle $end` ; do
+    empty_space=' '$empty_space
+  done
+  
+#   restore cursor
+  tput rc
+#   save cursor
+  tput sc
+#   delete line
+  tput il1
+  printf "[$progress_bar$empty_space]"
+  
+}
+
 ########################################################################
 ###   MAIN   ###########################################################
 
+#hide cursor
+tput civis
+
 copy_file $SOURCE $TARGET
 
+#show cursor
+tput cnorm
