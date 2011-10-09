@@ -87,20 +87,18 @@ function copy_file {
   local percent=0
   local string=''
   
-# CUrsor Down
+# cursor down (not cuu 2)
   printf '\n\n'
   
   while [ $target_size -lt $source_size ] ; do
     
     local max_width=`tput cols`
-#   name_width=`echo $max_width-16 | bc`
     local percent_width=7
     local bar_width=`echo $max_width-$percent_width | bc`
   
     percent=`echo "($target_size*100)/$source_size" | bc -l | xargs printf '%1.0f'`
 
     string=''
-#    string=${string}"Copying: `printf %.${name_width}s ${source}`\n"
     string=${string}`print_progress_bar $bar_width $percent`
     string=${string}" [`printf %3s ${percent}`%%]"
     string=${string}`print_size_bar $source_size $target_size`'\n'
@@ -117,8 +115,16 @@ function copy_file {
     
   done
 
-  return $target_size
+  string=''
+  string=${string}`print_progress_bar $bar_width 100`
+  string=${string}" [100%%]"
+  string=${string}`print_size_bar $source_size $target_size`'\n'
+  string=${string}'Copying completed.\n'
 
+  tput cuu 2
+
+  printf "$string"
+  
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -186,16 +192,20 @@ function print_size {
   
   for exponent in {1..10} ; do
   
-    if [[ $size -lt 1024 ]] ; then
+    if [ `echo "$size < 1024" | bc` -eq 1 ] ; then
       unit=${SIZE_UNITS[`echo "$exponent-1" | bc`]}
       break
     fi
     
-    size=`echo "$size/1024" | bc`
+    size="`echo "$size/1024" | bc -l`"
     
   done
   
-  printf "$size$unit"
+  if [ `echo "$size/100" | bc` -eq 0 ] ; then
+    printf "`printf '%.4s' $size`$unit"
+  else
+    printf "`echo $size | bc -l | xargs printf '%1.0f' | xargs printf '%4s'`$unit"
+  fi
   
 }
 
