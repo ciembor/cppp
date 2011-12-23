@@ -23,6 +23,7 @@ usage: $0 options
 Syntax: cppp [OPTION]... -s SOURCE -t TARGET|DIRECTORY
     
 This script copy SOURCE to TARGET or SOURCE to DIRECTORY
+(where source is a file) and displays a progress bar.
 
 OPTIONS:
    -h      Show usage
@@ -60,6 +61,18 @@ done
   
 # validation  # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   
+if [ -d $SOURCE ]
+then
+  printf "SOURCE can't be a directory. It must be a file.\n"
+  exit 1
+fi
+
+if [ ! -f $SOURCE ]
+then
+  printf "SOURCE is not valid.\n"
+  exit 1
+fi
+
 if [[ -z $SOURCE  || -z $TARGET || $PERIOD -lt 10 || $PERIOD -gt 1000 ]]
 then
   print_help
@@ -86,15 +99,14 @@ function copy_file {
   local target_size=0
   local percent=0
   local string=''
+  local max_width=`tput cols`
+  local percent_width=7
+  local bar_width=`echo $max_width-$percent_width | bc`
   
 # cursor down (not cuu 2)
   printf '\n\n'
   
   while [ $target_size -lt $source_size ] ; do
-    
-    local max_width=`tput cols`
-    local percent_width=7
-    local bar_width=`echo $max_width-$percent_width | bc`
   
     percent=`echo "($target_size*100)/$source_size" | bc -l | xargs printf '%1.0f'`
 
@@ -118,7 +130,7 @@ function copy_file {
   string=''
   string=${string}`print_progress_bar $bar_width 100`
   string=${string}" [100%%]"
-  string=${string}`print_size_bar $source_size $target_size`'\n'
+  string=${string}`print_size_bar $source_size $source_size`'\n'
   string=${string}'Copying completed.\n'
 
   tput cuu 2
